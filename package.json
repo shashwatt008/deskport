@@ -1,0 +1,20 @@
+{
+  "name": "deskport",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "db:generate": "turbo db:generate --filter=@deskport/api",
+    "db:migrate": "turbo db:migrate --filter=@deskport/api",
+    "db:push": "turbo db:push --filter=@deskport/api"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.0",
+    "typescript": "^5.7.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20"
+  }
+}
