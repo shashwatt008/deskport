@@ -1,18 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { TerminalView } from "@/components/terminal";
 import { api } from "@/lib/api";
 
 export default function MonitorPage() {
-  const params = useParams();
   const router = useRouter();
-  const sessionId = params.id as string;
+  const pathname = usePathname();
+  const sessionId = pathname.split("/").pop() || "";
   const [wsUrl, setWsUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!sessionId) return;
     const token = localStorage.getItem("deskport_token");
     if (!token) {
       router.replace("/login");

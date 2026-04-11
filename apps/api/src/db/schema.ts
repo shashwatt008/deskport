@@ -16,7 +16,7 @@ export const organizations = pgTable('organizations', {
   name: varchar('name', { length: 100 }).notNull(),
   slug: varchar('slug', { length: 100 }).notNull().unique(),
   plan: varchar('plan', { length: 20 }).notNull().default('free'),
-  stripeCustomerId: varchar('stripe_customer_id', { length: 255 }),
+  paypalSubscriptionId: varchar('paypal_subscription_id', { length: 255 }),
   ssoConfig: jsonb('sso_config'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -194,6 +194,40 @@ export const auditLogs = pgTable(
 export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
   organization: one(organizations, {
     fields: [auditLogs.orgId],
+    references: [organizations.id],
+  }),
+}));
+
+// ── Subscriptions ──────────────────────────────────────────────
+export const subscriptions = pgTable(
+  'subscriptions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    orgId: uuid('org_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    paypalSubscriptionId: varchar('paypal_subscription_id', { length: 255 }).notNull().unique(),
+    paypalPlanId: varchar('paypal_plan_id', { length: 255 }).notNull(),
+    status: varchar('status', { length: 30 }).notNull().default('pending'),
+    plan: varchar('plan', { length: 20 }).notNull().default('pro'),
+    seatLimit: integer('seat_limit').notNull().default(10),
+    amountCents: integer('amount_cents').notNull().default(0),
+    currency: varchar('currency', { length: 3 }).notNull().default('USD'),
+    currentPeriodStart: timestamp('current_period_start', { withTimezone: true }),
+    currentPeriodEnd: timestamp('current_period_end', { withTimezone: true }),
+    canceledAt: timestamp('canceled_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('subscriptions_org_id_idx').on(table.orgId),
+    index('subscriptions_paypal_sub_id_idx').on(table.paypalSubscriptionId),
+  ],
+);
+
+export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [subscriptions.orgId],
     references: [organizations.id],
   }),
 }));

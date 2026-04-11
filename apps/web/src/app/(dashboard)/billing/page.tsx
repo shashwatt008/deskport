@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CreditCard, Users, Calendar, ExternalLink } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import {
+  CreditCard,
+  Users,
+  Calendar,
+  CheckCircle,
+  XCircle,
+  Loader2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -18,21 +26,30 @@ interface BillingInfo {
   plan: string;
   seatCount: number;
   seatLimit: number;
-  nextBillingDate: string;
+  nextBillingDate: string | null;
   amount: number;
   currency: string;
-  status: "active" | "trialing" | "past_due" | "canceled";
+  status: string;
+  paypalSubscriptionId: string | null;
 }
 
-function planBadgeVariant(status: string) {
+interface PlanOption {
+  id: string;
+  name: string;
+  priceUsd: number;
+  seatLimit: number;
+}
+
+function statusBadgeVariant(status: string) {
   switch (status) {
     case "active":
       return "default" as const;
-    case "trialing":
+    case "pending":
       return "secondary" as const;
+    case "suspended":
     case "past_due":
       return "destructive" as const;
-    case "canceled":
+    case "cancelled":
       return "outline" as const;
     default:
       return "outline" as const;
@@ -40,17 +57,41 @@ function planBadgeVariant(status: string) {
 }
 
 export default function BillingPage() {
+  const searchParams = useSearchParams();
   const [billing, setBilling] = useState<BillingInfo | null>(null);
+  const [plans, setPlans] = useState<PlanOption[]>([]);
   const [loading, setLoading] = useState(true);
+  const [subscribing, setSubscribing] = useState<string | null>(null);
+  const [canceling, setCanceling] = useState(false);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   useEffect(() => {
-    loadBilling();
+    loadData();
   }, []);
 
-  async function loadBilling() {
+  // Handle return from PayPal
+  useEffect(() => {
+    const subscription = searchParams.get("subscription");
+    const subId = searchParams.get("subscription_id");
+
+    if (subscription === "success" && subId) {
+      activateSubscription(subId);
+    } else if (subscription === "canceled") {
+      setMessage({ type: "error", text: "Subscription was canceled." });
+    }
+  }, [searchParams]);
+
+  async function loadData() {
     try {
-      const data = await api.get<BillingInfo>("/api/billing");
-      setBilling(data);
+      const [billingData, planData] = await Promise.all([
+        api.get<BillingInfo>("/api/billing"),
+        api.get<PlanOption[]>("/api/billing/plans"),
+      ]);
+      setBilling(billingData);
+      setPlans(planData);
     } catch {
       setBilling(null);
     } finally {
@@ -58,12 +99,50 @@ export default function BillingPage() {
     }
   }
 
-  async function openBillingPortal() {
+  async function subscribe(planId: string) {
+    setSubscribing(planId);
+    setMessage(null);
     try {
-      const data = await api.post<{ url: string }>("/api/billing/portal");
-      window.open(data.url, "_blank");
+      const data = await api.post<{ approvalUrl: string; subscriptionId: string }>(
+        "/api/billing/subscribe",
+        { plan: planId }
+      );
+      // Redirect to PayPal
+      window.location.href = data.approvalUrl;
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      setMessage({
+        type: "error",
+        text: error.message || "Failed to create subscription",
+      });
+      setSubscribing(null);
+    }
+  }
+
+  async function activateSubscription(subscriptionId: string) {
+    try {
+      await api.post("/api/billing/activate", { subscriptionId });
+      setMessage({ type: "success", text: "Subscription activated!" });
+      await loadData();
     } catch {
-      // Error handled by API client
+      setMessage({
+        type: "error",
+        text: "Failed to activate. It may take a moment — refresh in a few seconds.",
+      });
+    }
+  }
+
+  async function handleCancel() {
+    if (!confirm("Are you sure you want to cancel your subscription?")) return;
+    setCanceling(true);
+    try {
+      await api.post("/api/billing/cancel");
+      setMessage({ type: "success", text: "Subscription cancelled." });
+      await loadData();
+    } catch {
+      setMessage({ type: "error", text: "Failed to cancel subscription." });
+    } finally {
+      setCanceling(false);
     }
   }
 
@@ -79,11 +158,14 @@ export default function BillingPage() {
     plan: "Free",
     seatCount: 1,
     seatLimit: 3,
-    nextBillingDate: new Date().toISOString(),
+    nextBillingDate: null,
     amount: 0,
     currency: "USD",
     status: "active",
+    paypalSubscriptionId: null,
   };
+
+  const isFree = info.plan === "Free";
 
   return (
     <div>
@@ -94,6 +176,24 @@ export default function BillingPage() {
         </p>
       </div>
 
+      {message && (
+        <div
+          className={`mb-6 flex items-center gap-2 rounded-lg border px-4 py-3 text-sm ${
+            message.type === "success"
+              ? "border-green-500/30 bg-green-500/10 text-green-400"
+              : "border-red-500/30 bg-red-500/10 text-red-400"
+          }`}
+        >
+          {message.type === "success" ? (
+            <CheckCircle className="h-4 w-4" />
+          ) : (
+            <XCircle className="h-4 w-4" />
+          )}
+          {message.text}
+        </div>
+      )}
+
+      {/* Current plan info */}
       <div className="grid gap-6 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -105,11 +205,13 @@ export default function BillingPage() {
           <CardContent>
             <div className="flex items-center gap-2">
               <span className="text-2xl font-bold">{info.plan}</span>
-              <Badge variant={planBadgeVariant(info.status)}>{info.status}</Badge>
+              <Badge variant={statusBadgeVariant(info.status)}>
+                {info.status}
+              </Badge>
             </div>
             {info.amount > 0 && (
               <p className="mt-1 text-sm text-muted-foreground">
-                ${info.amount / 100}/{info.currency.toUpperCase()} per month
+                ${info.amount / 100}/month
               </p>
             )}
           </CardContent>
@@ -149,34 +251,119 @@ export default function BillingPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {new Date(info.nextBillingDate).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })}
+              {info.nextBillingDate
+                ? new Date(info.nextBillingDate).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })
+                : "—"}
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              Auto-renews monthly
+              {info.nextBillingDate ? "Auto-renews monthly" : "No active billing"}
             </p>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>Manage Subscription</CardTitle>
-          <CardDescription>
-            Update your payment method, change plans, or view invoices through
-            the billing portal.
-          </CardDescription>
-        </CardHeader>
-        <CardFooter>
-          <Button onClick={openBillingPortal}>
-            <ExternalLink className="h-4 w-4" />
-            Manage Billing
-          </Button>
-        </CardFooter>
-      </Card>
+      {/* Plan selection — only show if on free plan */}
+      {isFree && plans.length > 0 && (
+        <div className="mt-8">
+          <h2 className="mb-4 text-lg font-semibold">Upgrade your plan</h2>
+          <div className="grid gap-6 md:grid-cols-2">
+            {plans.map((plan) => (
+              <Card key={plan.id} className="relative overflow-hidden">
+                {plan.id === "pro" && (
+                  <div className="absolute right-0 top-0 rounded-bl-lg bg-primary px-3 py-1 text-xs font-medium text-primary-foreground">
+                    Popular
+                  </div>
+                )}
+                <CardHeader>
+                  <CardTitle>{plan.name}</CardTitle>
+                  <CardDescription>
+                    Up to {plan.seatLimit} team members
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="mb-4">
+                    <span className="text-3xl font-bold">${plan.priceUsd}</span>
+                    <span className="text-muted-foreground">/month</span>
+                  </div>
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-400" />
+                      {plan.seatLimit} seats
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-400" />
+                      Unlimited sessions
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-400" />
+                      Session recording
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-400" />
+                      Audit logs
+                    </li>
+                    {plan.id === "enterprise" && (
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-400" />
+                        SSO & priority support
+                      </li>
+                    )}
+                  </ul>
+                </CardContent>
+                <CardFooter>
+                  <Button
+                    className="w-full"
+                    onClick={() => subscribe(plan.id)}
+                    disabled={subscribing !== null}
+                  >
+                    {subscribing === plan.id ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Redirecting to PayPal...
+                      </>
+                    ) : (
+                      `Subscribe with PayPal`
+                    )}
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Manage existing subscription */}
+      {!isFree && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Manage Subscription</CardTitle>
+            <CardDescription>
+              Your subscription is managed through PayPal. You can cancel
+              anytime — access continues until the end of your billing period.
+            </CardDescription>
+          </CardHeader>
+          <CardFooter>
+            <Button
+              variant="destructive"
+              onClick={handleCancel}
+              disabled={canceling}
+            >
+              {canceling ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Canceling...
+                </>
+              ) : (
+                "Cancel Subscription"
+              )}
+            </Button>
+          </CardFooter>
+        </Card>
+      )}
     </div>
   );
 }

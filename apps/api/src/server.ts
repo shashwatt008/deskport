@@ -11,6 +11,7 @@ import { templateRoutes } from './routes/templates.js';
 import { sessionRoutes } from './routes/sessions.js';
 import { teamRoutes } from './routes/team.js';
 import { auditRoutes } from './routes/audit.js';
+import { billingRoutes } from './routes/billing.js';
 
 // WebSocket handlers
 import { registerTunnelHandler } from './ws/tunnel-handler.js';
@@ -47,6 +48,7 @@ async function main(): Promise<void> {
   await app.register(sessionRoutes);
   await app.register(teamRoutes);
   await app.register(auditRoutes);
+  await app.register(billingRoutes);
 
   // ── WebSocket Routes ────────────────────────────────────────
   await app.register(registerTunnelHandler);

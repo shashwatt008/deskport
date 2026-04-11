@@ -7,4 +7,9 @@ export const env = {
   S3_ACCESS_KEY: process.env.S3_ACCESS_KEY ?? 'minioadmin',
   S3_SECRET_KEY: process.env.S3_SECRET_KEY ?? 'minioadmin',
   PORT: parseInt(process.env.PORT ?? '4000', 10),
+  PAYPAL_CLIENT_ID: process.env.PAYPAL_CLIENT_ID ?? '',
+  PAYPAL_CLIENT_SECRET: process.env.PAYPAL_CLIENT_SECRET ?? '',
+  PAYPAL_WEBHOOK_ID: process.env.PAYPAL_WEBHOOK_ID ?? '',
+  PAYPAL_MODE: (process.env.PAYPAL_MODE ?? 'sandbox') as 'sandbox' | 'live',
+  APP_URL: process.env.APP_URL ?? 'http://localhost:3000',
 } as const;

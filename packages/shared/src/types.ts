@@ -4,7 +4,7 @@ export interface Organization {
   name: string;
   slug: string;
   plan: 'free' | 'pro' | 'enterprise';
-  stripeCustomerId: string | null;
+  paypalSubscriptionId: string | null;
   ssoConfig: Record<string, unknown> | null;
   createdAt: Date;
   updatedAt: Date;
