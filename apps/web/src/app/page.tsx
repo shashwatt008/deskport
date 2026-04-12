@@ -1,23 +1,8 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import Link from "next/link";
-import { motion, useInView, AnimatePresence } from "framer-motion";
+import { useState, useRef } from "react";
+import { motion, useInView } from "framer-motion";
 import { createClient } from "@supabase/supabase-js";
-import {
-  Terminal,
-  Shield,
-  Users,
-  Zap,
-  Monitor,
-  Lock,
-  Eye,
-  ArrowRight,
-  Globe,
-  Clock,
-  BarChart3,
-  CheckCircle2,
-} from "lucide-react";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || "https://dkihbchyvopwnpkqrvda.supabase.co",
@@ -25,1045 +10,287 @@ const supabase = createClient(
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRraWhiY2h5dm9wd25wa3FydmRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMDUwMjgsImV4cCI6MjA4ODc4MTAyOH0.dbmWxA-ZZNC08HLuQ_Y4sl5vtJhGxtKeYxi_6QPYohY",
 );
 
-// ── Animated counter ──────────────────────────────────────────────
-function AnimatedNumber({ target, suffix = "" }: { target: number; suffix?: string }) {
-  const [count, setCount] = useState(0);
-  const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-50px" });
+const fadeUp = {
+  hidden: { opacity: 0, y: 20 },
+  show: (i = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, delay: i * 0.08, ease: [0.25, 0.4, 0, 1] as [number, number, number, number] },
+  }),
+};
 
-  useEffect(() => {
-    if (!inView) return;
-    let start = 0;
-    const duration = 1500;
-    const step = (timestamp: number) => {
-      if (!start) start = timestamp;
-      const progress = Math.min((timestamp - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setCount(Math.floor(eased * target));
-      if (progress < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  }, [inView, target]);
-
-  return (
-    <span ref={ref}>
-      {count}
-      {suffix}
-    </span>
-  );
-}
-
-// ── Terminal typing animation ─────────────────────────────────────
-function TerminalDemo() {
-  const lines = [
-    { prompt: "you@server", cmd: "deskport share my-tool --team engineering", delay: 0 },
-    { output: "  Connecting to DeskPort relay...", delay: 900 },
-    { output: "  Agent online  ●  wss://relay.deskport.dev", delay: 1600 },
-    { output: "", delay: 2000 },
-    { prompt: "alice@browser", cmd: "# Zero install — opens in browser", delay: 2400 },
-    { output: "  Session started  ●  claude-code, aws-cli available", delay: 3200 },
-    { prompt: "alice@browser", cmd: 'claude "fix the auth middleware"', delay: 3800 },
-    { output: "  ● Claude Code running... (sandboxed to /app/src)", delay: 4600 },
-    { output: "  ✓ Fixed auth guard — 3 files changed", delay: 5800 },
-  ];
-
-  const [visibleLines, setVisibleLines] = useState(0);
+function FadeSection({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true });
-
-  useEffect(() => {
-    if (!inView) return;
-    const timers = lines.map((line, i) =>
-      setTimeout(() => setVisibleLines(i + 1), line.delay),
-    );
-    return () => timers.forEach(clearTimeout);
-  }, [inView]);
-
-  return (
-    <div
-      ref={ref}
-      className="relative overflow-hidden rounded-xl border shadow-2xl"
-      style={{
-        background: "#0D0D0D",
-        borderColor: "rgba(0,255,65,0.15)",
-        boxShadow: "0 0 60px rgba(0,255,65,0.05), 0 25px 50px rgba(0,0,0,0.6)",
-      }}
-    >
-      {/* Glow top border */}
-      <div
-        className="absolute inset-x-0 top-0 h-px"
-        style={{ background: "linear-gradient(90deg, transparent, #00FF41, transparent)" }}
-      />
-
-      {/* Title bar */}
-      <div
-        className="flex items-center gap-2 border-b px-4 py-3"
-        style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}
-      >
-        <div className="flex gap-1.5">
-          <div className="h-3 w-3 rounded-full bg-[#ff5f57]" />
-          <div className="h-3 w-3 rounded-full bg-[#febc2e]" />
-          <div className="h-3 w-3 rounded-full bg-[#28c840]" />
-        </div>
-        <span
-          className="ml-2 text-xs"
-          style={{ fontFamily: "'JetBrains Mono', monospace", color: "rgba(255,255,255,0.3)" }}
-        >
-          deskport — terminal
-        </span>
-        <div className="ml-auto flex items-center gap-1.5">
-          <div className="h-1.5 w-1.5 rounded-full bg-[#00FF41] animate-pulse" />
-          <span className="text-xs" style={{ color: "#00FF41", fontFamily: "'JetBrains Mono', monospace", fontSize: "10px" }}>
-            live
-          </span>
-        </div>
-      </div>
-
-      {/* Lines */}
-      <div className="p-5 min-h-[220px]" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "13px", lineHeight: "1.7" }}>
-        {lines.slice(0, visibleLines).map((line, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            {"prompt" in line && line.prompt ? (
-              <div>
-                <span style={{ color: "#00FF41" }}>{line.prompt}</span>
-                <span style={{ color: "rgba(255,255,255,0.3)" }}>:~$ </span>
-                <span style={{ color: "#ffffff" }}>{line.cmd}</span>
-              </div>
-            ) : (
-              <div style={{ color: "rgba(255,255,255,0.45)" }}>{line.output}</div>
-            )}
-          </motion.div>
-        ))}
-        {visibleLines < lines.length && (
-          <span
-            className="inline-block h-4 w-2 animate-pulse"
-            style={{ background: "#00FF41", opacity: 0.7 }}
-          />
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Feature card with scroll-triggered fade-up ────────────────────
-function FeatureCard({
-  icon,
-  title,
-  desc,
-  delay = 0,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  desc: string;
-  delay?: number;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-60px" });
-
+  const inView = useInView(ref, { once: true, margin: "-80px" });
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y: 32 }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] }}
-      className="group rounded-xl border p-6 transition-all duration-300 cursor-default"
-      style={{
-        background: "rgba(255,255,255,0.02)",
-        borderColor: "rgba(255,255,255,0.07)",
-      }}
-      whileHover={{
-        borderColor: "rgba(0,255,65,0.2)",
-        background: "rgba(0,255,65,0.03)",
-        y: -2,
-      }}
+      initial="hidden"
+      animate={inView ? "show" : "hidden"}
+      variants={fadeUp}
+      className={className}
     >
-      <div
-        className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg transition-colors"
-        style={{ background: "rgba(0,255,65,0.08)", color: "#00FF41" }}
-      >
-        {icon}
-      </div>
-      <h3 className="mb-2 font-semibold text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-        {title}
-      </h3>
-      <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
-        {desc}
-      </p>
+      {children}
     </motion.div>
   );
 }
 
-// ── Waitlist form with Supabase ───────────────────────────────────
-function WaitlistForm({ className = "" }: { className?: string }) {
+function WaitlistForm() {
   const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email) return;
-    setLoading(true);
-    setError("");
-    try {
-      const { error: sbError } = await supabase
-        .from("deskport_waitlist")
-        .insert({ email: email.toLowerCase().trim() });
-      if (sbError && sbError.code !== "23505") {
-        setError("Something went wrong. Please try again.");
-      } else {
-        setSubmitted(true);
-      }
-    } catch {
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
+    setStatus("loading");
+    const { error } = await supabase.from("deskport_waitlist").insert({ email });
+    if (error) {
+      setStatus("error");
+    } else {
+      setStatus("success");
+      setEmail("");
     }
-  };
-
-  if (submitted) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className={`flex items-center gap-2 rounded-xl border px-5 py-3 text-sm ${className}`}
-        style={{ borderColor: "rgba(0,255,65,0.3)", background: "rgba(0,255,65,0.08)", color: "#00FF41" }}
-      >
-        <CheckCircle2 className="h-4 w-4 shrink-0" />
-        <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>You&apos;re on the list. We&apos;ll reach out soon.</span>
-      </motion.div>
-    );
   }
 
   return (
-    <div className={className}>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row">
-        <input
-          type="email"
-          required
-          placeholder="you@company.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="h-12 flex-1 rounded-xl border px-4 text-sm text-white outline-none transition-all"
-          style={{
-            fontFamily: "'JetBrains Mono', monospace",
-            background: "rgba(255,255,255,0.04)",
-            borderColor: "rgba(255,255,255,0.1)",
-          }}
-          onFocus={(e) => {
-            e.target.style.borderColor = "rgba(0,255,65,0.4)";
-            e.target.style.boxShadow = "0 0 0 3px rgba(0,255,65,0.08)";
-          }}
-          onBlur={(e) => {
-            e.target.style.borderColor = "rgba(255,255,255,0.1)";
-            e.target.style.boxShadow = "none";
-          }}
-        />
-        <button
-          type="submit"
-          disabled={loading}
-          className="group inline-flex h-12 items-center justify-center gap-2 rounded-xl px-6 text-sm font-semibold transition-all disabled:opacity-50"
-          style={{
-            background: "linear-gradient(135deg, #00FF41, #00D4FF)",
-            color: "#0A0A0A",
-            fontFamily: "'Space Grotesk', sans-serif",
-            boxShadow: "0 0 24px rgba(0,255,65,0.2)",
-          }}
-        >
-          {loading ? "Joining..." : "Join Waitlist"}
-          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-        </button>
-      </form>
-      {error && (
-        <p className="mt-2 text-sm" style={{ color: "#ff6b6b", fontFamily: "'JetBrains Mono', monospace" }}>
-          {error}
-        </p>
+    <form onSubmit={handleSubmit} className="flex gap-2 max-w-sm mx-auto">
+      <input
+        type="email"
+        placeholder="you@company.com"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        disabled={status === "loading" || status === "success"}
+        className="flex-1 px-4 py-3 border border-black/10 rounded-full bg-white text-sm text-black placeholder-[#999] outline-none focus:border-black/30 transition-colors"
+      />
+      <button
+        type="submit"
+        disabled={status === "loading" || status === "success"}
+        className="px-5 py-3 bg-black text-white text-sm rounded-full hover:bg-[#222] transition-colors disabled:opacity-50"
+      >
+        {status === "loading" ? "..." : status === "success" ? "Done" : "Join"}
+      </button>
+      {status === "error" && (
+        <p className="absolute mt-12 text-xs text-[#666]">Something went wrong. Try again.</p>
       )}
-    </div>
+    </form>
   );
 }
 
-// ── How it works step ─────────────────────────────────────────────
-function HowItWorksStep({
-  step,
-  icon,
-  title,
-  desc,
-  code,
-  delay,
-}: {
-  step: number;
-  icon: React.ReactNode;
-  title: string;
-  desc: string;
-  code?: string | null;
-  delay: number;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-60px" });
+const companies = ["Stripe", "Vercel", "Linear", "Retool", "Supabase", "PlanetScale"];
 
+const features = [
+  {
+    title: "One-line install",
+    description: "Recipients install your tool with a single curl command. No setup, no docs to write.",
+  },
+  {
+    title: "Binary hosting",
+    description: "We store and serve your binaries globally. CDN-backed, versioned, always available.",
+  },
+  {
+    title: "Usage analytics",
+    description: "See who installed, when, and from where. Real data about your tool's adoption.",
+  },
+  {
+    title: "Version management",
+    description: "Push new versions without breaking existing install links. Semver supported.",
+  },
+];
+
+export default function Home() {
   return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 32 }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] }}
-      className="relative flex flex-col items-center text-center px-6 py-8"
-    >
-      {/* Step number badge */}
-      <div
-        className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl"
-        style={{
-          background: "rgba(0,255,65,0.08)",
-          border: "1px solid rgba(0,255,65,0.2)",
-          color: "#00FF41",
-        }}
-      >
-        {icon}
-      </div>
-      <div
-        className="mb-1 text-xs font-semibold uppercase tracking-widest"
-        style={{ color: "rgba(0,255,65,0.6)", fontFamily: "'JetBrains Mono', monospace" }}
-      >
-        Step {step}
-      </div>
-      <h3 className="mb-2 text-lg font-semibold text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-        {title}
-      </h3>
-      <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
-        {desc}
-      </p>
-      {code && (
-        <code
-          className="mt-3 rounded-md px-3 py-1.5 text-xs"
-          style={{
-            background: "rgba(0,255,65,0.08)",
-            color: "#00FF41",
-            fontFamily: "'JetBrains Mono', monospace",
-            border: "1px solid rgba(0,255,65,0.15)",
-          }}
-        >
-          {code}
-        </code>
-      )}
-    </motion.div>
-  );
-}
-
-// ── Mesh blob background ──────────────────────────────────────────
-function MeshBlobs() {
-  return (
-    <div className="pointer-events-none fixed inset-0 overflow-hidden">
-      <div
-        className="absolute"
-        style={{
-          top: "-20%",
-          left: "-10%",
-          width: "600px",
-          height: "600px",
-          borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(0,255,65,0.04) 0%, transparent 70%)",
-          filter: "blur(40px)",
-        }}
-      />
-      <div
-        className="absolute"
-        style={{
-          top: "10%",
-          right: "-15%",
-          width: "700px",
-          height: "700px",
-          borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(0,212,255,0.04) 0%, transparent 70%)",
-          filter: "blur(60px)",
-        }}
-      />
-      <div
-        className="absolute"
-        style={{
-          bottom: "20%",
-          left: "20%",
-          width: "500px",
-          height: "500px",
-          borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(0,255,65,0.03) 0%, transparent 70%)",
-          filter: "blur(50px)",
-        }}
-      />
-    </div>
-  );
-}
-
-// ── Stat item ────────────────────────────────────────────────────
-function StatItem({
-  value,
-  suffix,
-  label,
-  icon,
-  delay,
-}: {
-  value: number | string;
-  suffix?: string;
-  label: string;
-  icon: React.ReactNode;
-  delay: number;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-30px" });
-
-  return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 16 }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.4, delay }}
-      className="text-center"
-    >
-      <div className="mb-1 flex items-center justify-center gap-1.5" style={{ color: "rgba(0,255,65,0.5)" }}>
-        {icon}
-      </div>
-      <div
-        className="text-3xl font-bold tracking-tight"
-        style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#ffffff" }}
-      >
-        {typeof value === "number" && value % 1 === 0 && value > 0 ? (
-          <AnimatedNumber target={value} suffix={suffix} />
-        ) : value === 0 ? (
-          <>Zero{suffix}</>
-        ) : (
-          <>{value}{suffix}</>
-        )}
-      </div>
-      <div className="mt-1 text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>
-        {label}
-      </div>
-    </motion.div>
-  );
-}
-
-// ── Main page ─────────────────────────────────────────────────────
-export default function LandingPage() {
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  const features = [
-    {
-      icon: <Shield className="h-5 w-5" />,
-      title: "Sandboxed Sessions",
-      desc: "Restrict directories, tools, and commands per session template. No one goes rogue.",
-    },
-    {
-      icon: <Eye className="h-5 w-5" />,
-      title: "Live Monitoring",
-      desc: "Watch any session in real-time. Read-only spectator mode for admins.",
-    },
-    {
-      icon: <Lock className="h-5 w-5" />,
-      title: "Encrypted Tunnel",
-      desc: "WSS tunnel with API-key auth. Terminal data never touches disk.",
-    },
-    {
-      icon: <BarChart3 className="h-5 w-5" />,
-      title: "Audit Logs",
-      desc: "Every session, login, and config change logged with timestamps and user IDs.",
-    },
-    {
-      icon: <Terminal className="h-5 w-5" />,
-      title: "Session Recording",
-      desc: "Asciicast v2 recordings for compliance and playback.",
-    },
-    {
-      icon: <Users className="h-5 w-5" />,
-      title: "Team Management",
-      desc: "Invite members, assign admin/member roles, manage seats.",
-    },
-  ];
-
-  const steps = [
-    {
-      icon: <Terminal className="h-6 w-6" />,
-      title: "Install Agent",
-      desc: "One command on your server. Connects via secure WebSocket tunnel.",
-      code: "npx deskport start",
-    },
-    {
-      icon: <Users className="h-6 w-6" />,
-      title: "Invite Team",
-      desc: "Add members, assign roles. Control who accesses what.",
-      code: null,
-    },
-    {
-      icon: <Monitor className="h-6 w-6" />,
-      title: "Share via Browser",
-      desc: "Team opens a link — full terminal in the browser. Zero install.",
-      code: null,
-    },
-  ];
-
-  const plans = [
-    {
-      name: "Free",
-      price: "$0",
-      period: "forever",
-      features: ["3 seats", "1 agent", "5 sessions/day", "Community support"],
-      cta: "Get Started",
-      highlighted: false,
-    },
-    {
-      name: "Pro",
-      price: "$29",
-      period: "/month",
-      features: [
-        "10 seats",
-        "Unlimited agents",
-        "Unlimited sessions",
-        "Session recording",
-        "Audit logs",
-        "Priority support",
-      ],
-      cta: "Start Free Trial",
-      highlighted: true,
-    },
-    {
-      name: "Enterprise",
-      price: "$99",
-      period: "/month",
-      features: [
-        "50 seats",
-        "Unlimited everything",
-        "SSO / SAML",
-        "Custom templates",
-        "Dedicated support",
-        "SLA guarantee",
-      ],
-      cta: "Contact Us",
-      highlighted: false,
-    },
-  ];
-
-  return (
-    <div className="relative min-h-screen overflow-x-hidden" style={{ background: "#0A0A0A" }}>
-      {/* Grain overlay */}
-      <div className="grain-overlay pointer-events-none fixed inset-0 z-[1]" />
-
-      {/* Mesh blobs */}
-      <MeshBlobs />
-
-      {/* ── Nav ──────────────────────────────────────────────── */}
-      <nav
-        className="fixed top-0 z-50 w-full transition-all duration-300"
-        style={{
-          background: scrolled ? "rgba(10,10,10,0.85)" : "transparent",
-          backdropFilter: scrolled ? "blur(20px)" : "none",
-          borderBottom: scrolled ? "1px solid rgba(255,255,255,0.06)" : "none",
-        }}
-      >
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2.5">
-            <div
-              className="flex h-8 w-8 items-center justify-center rounded-lg"
-              style={{ background: "rgba(0,255,65,0.1)", color: "#00FF41", border: "1px solid rgba(0,255,65,0.2)" }}
-            >
-              <Terminal className="h-4 w-4" />
-            </div>
-            <span
-              className="text-lg font-bold tracking-tight text-white"
-              style={{ fontFamily: "'Space Grotesk', sans-serif" }}
-            >
-              DeskPort
-            </span>
+    <main style={{ fontFamily: "'Inter', system-ui, sans-serif", fontWeight: 400 }}>
+      {/* NAV */}
+      <nav className="bg-[#F3F3F3] border-b border-black/[0.06]">
+        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+          <span className="text-sm font-medium tracking-tight">DeskPort</span>
+          <div className="flex items-center gap-6 text-sm text-[#666]">
+            <a href="#how-it-works" className="hover:text-black transition-colors">How it works</a>
+            <a href="#features" className="hover:text-black transition-colors">Features</a>
+            <a href="#waitlist" className="px-4 py-1.5 bg-black text-white rounded-full text-xs hover:bg-[#222] transition-colors">Join waitlist</a>
           </div>
-          <a
-            href="#waitlist"
-            className="rounded-lg px-4 py-2 text-sm font-semibold transition-all"
-            style={{
-              background: "linear-gradient(135deg, #00FF41, #00D4FF)",
-              color: "#0A0A0A",
-              fontFamily: "'Space Grotesk', sans-serif",
-              boxShadow: "0 0 20px rgba(0,255,65,0.15)",
-            }}
-          >
-            Join Waitlist
-          </a>
         </div>
       </nav>
 
-      {/* ── Hero ─────────────────────────────────────────────── */}
-      <section className="relative px-6 pb-24 pt-36 md:pt-44">
-        {/* Dotted grid */}
-        <div
-          className="dotted-grid pointer-events-none absolute inset-0"
-          style={{ opacity: 0.5, maskImage: "radial-gradient(ellipse 80% 60% at 50% 0%, black, transparent)" }}
-        />
-
-        <div className="relative mx-auto max-w-6xl z-10">
-          <div className="grid items-center gap-16 lg:grid-cols-2">
-            {/* Left */}
-            <div>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="mb-6 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm"
-                style={{
-                  background: "rgba(0,255,65,0.06)",
-                  border: "1px solid rgba(0,255,65,0.2)",
-                  color: "#00FF41",
-                  fontFamily: "'JetBrains Mono', monospace",
-                }}
-              >
-                <Zap className="h-3.5 w-3.5" />
-                Coming Soon — Join the Waitlist
-              </motion.div>
-
-              <motion.h1
-                initial={{ opacity: 0, y: 24 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.1 }}
-                className="text-5xl font-extrabold leading-[1.05] tracking-tight md:text-6xl lg:text-7xl"
-                style={{ fontFamily: "'Space Grotesk', sans-serif" }}
-              >
-                <span className="gradient-text">Share CLI tools</span>
-                <br />
-                <span className="text-white">with your team.</span>
-              </motion.h1>
-
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="mt-6 max-w-lg text-lg leading-relaxed"
-                style={{ color: "rgba(255,255,255,0.5)" }}
-              >
-                One agent on your server. Your team gets browser-based terminal
-                access to Claude Code, AWS CLI, kubectl — any CLI tool.
-                Zero install, full control.
-              </motion.p>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-                className="mt-8 max-w-md"
-              >
-                <p className="mb-3 text-sm font-medium" style={{ color: "rgba(255,255,255,0.4)", fontFamily: "'JetBrains Mono', monospace" }}>
-                  // be first to get access:
-                </p>
-                <WaitlistForm />
-              </motion.div>
-
-              {/* Trust bar */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.45 }}
-                className="mt-10 flex items-center gap-6 text-xs"
-                style={{ color: "rgba(255,255,255,0.3)", fontFamily: "'JetBrains Mono', monospace" }}
-              >
-                <span className="flex items-center gap-1.5">
-                  <Lock className="h-3.5 w-3.5" /> End-to-end encrypted
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Shield className="h-3.5 w-3.5" /> SOC 2 ready
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Globe className="h-3.5 w-3.5" /> Self-hostable
-                </span>
-              </motion.div>
-            </div>
-
-            {/* Right — Terminal Demo */}
-            <motion.div
-              initial={{ opacity: 0, x: 40 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.7, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              className="relative"
-            >
-              <div
-                className="absolute -inset-8 rounded-2xl"
-                style={{
-                  background: "radial-gradient(ellipse at center, rgba(0,255,65,0.06) 0%, transparent 70%)",
-                }}
-              />
-              <TerminalDemo />
+      {/* HERO */}
+      <section className="bg-[#F3F3F3] py-40">
+        <div className="max-w-6xl mx-auto px-6 text-center">
+          <motion.div
+            initial="hidden"
+            animate="show"
+            variants={{ show: { transition: { staggerChildren: 0.1 } } }}
+          >
+            <motion.div variants={fadeUp} custom={0}>
+              <span className="inline-block text-xs uppercase tracking-[0.15em] text-[#666] border border-black/10 px-3 py-1 rounded-full mb-8">
+                Private beta
+              </span>
             </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Stats bar ────────────────────────────────────────── */}
-      <section
-        className="border-y"
-        style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}
-      >
-        <div className="mx-auto grid max-w-5xl grid-cols-2 gap-8 px-6 py-14 md:grid-cols-4">
-          <StatItem value={50} suffix="ms" label="Avg latency" icon={<Clock className="h-4 w-4" />} delay={0} />
-          <StatItem value={256} suffix="-bit" label="AES encryption" icon={<Lock className="h-4 w-4" />} delay={0.1} />
-          <StatItem value={99.9} suffix="%" label="Uptime SLA" icon={<BarChart3 className="h-4 w-4" />} delay={0.2} />
-          <StatItem value={0} label="Install for team" icon={<Zap className="h-4 w-4" />} delay={0.3} />
-        </div>
-      </section>
-
-      {/* ── How it works ─────────────────────────────────────── */}
-      <section id="how-it-works" className="px-6 py-24">
-        <div className="mx-auto max-w-5xl">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-80px" }}
-            transition={{ duration: 0.4 }}
-            className="text-center mb-16"
-          >
-            <div
-              className="mb-3 text-xs font-semibold uppercase tracking-widest"
-              style={{ color: "rgba(0,255,65,0.6)", fontFamily: "'JetBrains Mono', monospace" }}
+            <motion.h1
+              variants={fadeUp}
+              custom={1}
+              className="text-[54px] font-normal leading-[1.1] tracking-tight text-black mb-6 max-w-2xl mx-auto"
             >
-              // how it works
-            </div>
-            <h2
-              className="text-4xl font-bold tracking-tight text-white"
-              style={{ fontFamily: "'Space Grotesk', sans-serif" }}
+              Share any CLI tool.<br />With one link.
+            </motion.h1>
+            <motion.p
+              variants={fadeUp}
+              custom={2}
+              className="text-base text-[#666] leading-[1.6] mb-10 max-w-lg mx-auto"
             >
-              Up and running in 3 steps
-            </h2>
-          </motion.div>
-          <div className="grid gap-0 md:grid-cols-3">
-            {steps.map((step, i) => (
-              <HowItWorksStep
-                key={i}
-                step={i + 1}
-                icon={step.icon}
-                title={step.title}
-                desc={step.desc}
-                code={step.code}
-                delay={i * 0.1}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Features grid ────────────────────────────────────── */}
-      <section
-        className="border-y px-6 py-24"
-        style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.015)" }}
-      >
-        <div className="mx-auto max-w-5xl">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-80px" }}
-            transition={{ duration: 0.4 }}
-            className="text-center mb-16"
-          >
-            <div
-              className="mb-3 text-xs font-semibold uppercase tracking-widest"
-              style={{ color: "rgba(0,255,65,0.6)", fontFamily: "'JetBrains Mono', monospace" }}
-            >
-              // features
-            </div>
-            <h2
-              className="text-4xl font-bold tracking-tight text-white"
-              style={{ fontFamily: "'Space Grotesk', sans-serif" }}
-            >
-              Everything you need for secure CLI sharing
-            </h2>
-          </motion.div>
-          <div className="grid gap-5 md:grid-cols-3">
-            {features.map((f, i) => (
-              <FeatureCard
-                key={i}
-                icon={f.icon}
-                title={f.title}
-                desc={f.desc}
-                delay={i * 0.07}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Use cases ────────────────────────────────────────── */}
-      <section className="px-6 py-24">
-        <div className="mx-auto max-w-5xl">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-80px" }}
-            transition={{ duration: 0.4 }}
-            className="text-center mb-16"
-          >
-            <div
-              className="mb-3 text-xs font-semibold uppercase tracking-widest"
-              style={{ color: "rgba(0,255,65,0.6)", fontFamily: "'JetBrains Mono', monospace" }}
-            >
-              // use cases
-            </div>
-            <h2
-              className="text-4xl font-bold tracking-tight text-white"
-              style={{ fontFamily: "'Space Grotesk', sans-serif" }}
-            >
-              Built for teams that share powerful tools
-            </h2>
-          </motion.div>
-          <div className="grid gap-6 md:grid-cols-2">
-            {[
-              {
-                icon: "🤖",
-                title: "Share AI Coding Assistants",
-                desc: "One Claude Code license, entire team gets browser access. Admin watches everything.",
-                tags: ["Claude Code", "Cursor", "Copilot CLI"],
-              },
-              {
-                icon: "☁️",
-                title: "Cloud Infrastructure Access",
-                desc: "Grant kubectl and AWS CLI access without sharing credentials or SSH keys.",
-                tags: ["AWS CLI", "kubectl", "terraform"],
-              },
-              {
-                icon: "🎓",
-                title: "Training & Onboarding",
-                desc: "New hires get pre-configured terminals. Instructors monitor in real-time.",
-                tags: ["Bootcamps", "Workshops", "Pair programming"],
-              },
-              {
-                icon: "🔒",
-                title: "Compliance & Audit",
-                desc: "Every command recorded. Session templates enforce least-privilege. SOC 2 ready.",
-                tags: ["HIPAA", "SOC 2", "ISO 27001"],
-              },
-            ].map((uc, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-60px" }}
-                transition={{ duration: 0.5, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
-                className="rounded-xl border p-6"
-                style={{
-                  background: "rgba(255,255,255,0.02)",
-                  borderColor: "rgba(255,255,255,0.07)",
-                }}
+              Upload your tool. We generate install scripts, host binaries, track usage. Zero config.
+            </motion.p>
+            <motion.div variants={fadeUp} custom={3} className="flex items-center justify-center gap-4">
+              <a
+                href="#waitlist"
+                className="px-6 py-3 bg-black text-white text-sm rounded-full hover:bg-[#222] transition-colors"
               >
-                <div className="mb-3 text-3xl">{uc.icon}</div>
-                <h3
-                  className="mb-2 text-lg font-semibold text-white"
-                  style={{ fontFamily: "'Space Grotesk', sans-serif" }}
-                >
-                  {uc.title}
-                </h3>
-                <p className="mb-4 text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
-                  {uc.desc}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {uc.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="rounded-md px-2.5 py-1 text-xs"
-                      style={{
-                        background: "rgba(0,255,65,0.06)",
-                        color: "rgba(0,255,65,0.7)",
-                        border: "1px solid rgba(0,255,65,0.12)",
-                        fontFamily: "'JetBrains Mono', monospace",
-                      }}
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </motion.div>
-            ))}
-          </div>
+                Join waitlist
+              </a>
+              <a
+                href="https://github.com"
+                className="text-sm text-[#666] hover:text-black transition-colors"
+              >
+                View on GitHub →
+              </a>
+            </motion.div>
+          </motion.div>
+
+          {/* Terminal mockup */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.5, ease: [0.25, 0.4, 0, 1] }}
+            className="mt-16 max-w-xl mx-auto"
+          >
+            <div className="bg-white border border-black/[0.08] rounded-md shadow-sm overflow-hidden">
+              <div className="flex items-center gap-1.5 px-4 py-3 border-b border-black/[0.06]">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#E1E1E1]" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[#E1E1E1]" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[#E1E1E1]" />
+                <span className="ml-2 text-xs text-[#999]">Terminal</span>
+              </div>
+              <div className="px-6 py-5 font-mono text-sm text-black">
+                <p className="text-[#999] text-xs mb-3">$ — bash</p>
+                <p><span className="text-[#999]">$</span> curl -sSL deskport.hq/my-tool | bash</p>
+                <p className="text-[#999] mt-2">Downloading my-tool v1.2.0...</p>
+                <p className="text-[#999]">Installing to /usr/local/bin/my-tool</p>
+                <p className="mt-1">Done. Run <span className="text-black font-medium">my-tool --help</span> to get started.</p>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </section>
 
-      {/* ── Pricing ──────────────────────────────────────────── */}
-      <section
-        className="border-y px-6 py-24"
-        style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.015)" }}
-      >
-        <div className="mx-auto max-w-4xl">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-80px" }}
-            transition={{ duration: 0.4 }}
-            className="text-center mb-16"
-          >
-            <div
-              className="mb-3 text-xs font-semibold uppercase tracking-widest"
-              style={{ color: "rgba(0,255,65,0.6)", fontFamily: "'JetBrains Mono', monospace" }}
-            >
-              // pricing
-            </div>
-            <h2
-              className="mb-4 text-4xl font-bold tracking-tight text-white"
-              style={{ fontFamily: "'Space Grotesk', sans-serif" }}
-            >
-              Start free, scale when ready
-            </h2>
-            <p className="mx-auto max-w-lg text-base" style={{ color: "rgba(255,255,255,0.4)" }}>
-              No credit card required. Upgrade anytime.
+      {/* TRUST BAR */}
+      <section className="bg-white py-16 border-y border-black/[0.06]">
+        <div className="max-w-6xl mx-auto px-6">
+          <FadeSection>
+            <p className="text-center text-xs uppercase tracking-[0.15em] text-[#999] mb-8">
+              Used by developers at
             </p>
-          </motion.div>
+            <div className="flex items-center justify-center gap-10 flex-wrap">
+              {companies.map((c) => (
+                <span key={c} className="text-sm text-[#BBBBBB] font-medium">{c}</span>
+              ))}
+            </div>
+          </FadeSection>
+        </div>
+      </section>
 
-          <div className="grid gap-6 md:grid-cols-3">
-            {plans.map((plan, i) => (
-              <motion.div
-                key={plan.name}
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-60px" }}
-                transition={{ duration: 0.5, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] }}
-                className="relative rounded-xl border p-6"
-                style={
-                  plan.highlighted
-                    ? {
-                        background: "rgba(0,255,65,0.04)",
-                        borderColor: "rgba(0,255,65,0.25)",
-                        boxShadow: "0 0 40px rgba(0,255,65,0.08), inset 0 1px 0 rgba(0,255,65,0.1)",
-                      }
-                    : {
-                        background: "rgba(255,255,255,0.02)",
-                        borderColor: "rgba(255,255,255,0.07)",
-                      }
-                }
-              >
-                {plan.highlighted && (
-                  <div
-                    className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-xs font-semibold"
-                    style={{
-                      background: "linear-gradient(135deg, #00FF41, #00D4FF)",
-                      color: "#0A0A0A",
-                      fontFamily: "'Space Grotesk', sans-serif",
-                    }}
-                  >
-                    Most Popular
-                  </div>
-                )}
-                <h3
-                  className="text-lg font-semibold text-white"
-                  style={{ fontFamily: "'Space Grotesk', sans-serif" }}
-                >
-                  {plan.name}
-                </h3>
-                <div className="mt-3 mb-6">
-                  <span
-                    className="text-4xl font-bold text-white"
-                    style={{ fontFamily: "'Space Grotesk', sans-serif" }}
-                  >
-                    {plan.price}
-                  </span>
-                  <span style={{ color: "rgba(255,255,255,0.4)" }}>{plan.period}</span>
-                </div>
-                <ul className="mb-8 space-y-3">
-                  {plan.features.map((f) => (
-                    <li
-                      key={f}
-                      className="flex items-center gap-2 text-sm"
-                      style={{ color: "rgba(255,255,255,0.5)" }}
-                    >
-                      <CheckCircle2 className="h-4 w-4 shrink-0" style={{ color: "rgba(0,255,65,0.6)" }} />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <a
-                  href="#waitlist"
-                  className="block w-full rounded-lg py-2.5 text-center text-sm font-medium transition-all"
-                  style={
-                    plan.highlighted
-                      ? {
-                          background: "linear-gradient(135deg, #00FF41, #00D4FF)",
-                          color: "#0A0A0A",
-                          fontFamily: "'Space Grotesk', sans-serif",
-                          fontWeight: 600,
-                        }
-                      : {
-                          background: "rgba(255,255,255,0.05)",
-                          color: "rgba(255,255,255,0.7)",
-                          border: "1px solid rgba(255,255,255,0.1)",
-                          fontFamily: "'Space Grotesk', sans-serif",
-                        }
-                  }
-                >
-                  {plan.cta}
-                </a>
-              </motion.div>
+      {/* HOW IT WORKS */}
+      <section id="how-it-works" className="bg-[#EBEBEB] py-32">
+        <div className="max-w-6xl mx-auto px-6">
+          <FadeSection>
+            <p className="text-xs uppercase tracking-[0.15em] text-[#999] mb-4">How it works</p>
+            <h2 className="text-[48px] font-normal text-black mb-16 max-w-lg">
+              Three steps to share anything.
+            </h2>
+          </FadeSection>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+            {[
+              { n: "01", title: "Upload your binary", body: "Point DeskPort at your compiled binary or script. We handle storage, CDN distribution, and versioning automatically." },
+              { n: "02", title: "Get your link", body: "Receive a unique shareable URL. Anyone with the link can install your tool in one command — no account required." },
+              { n: "03", title: "Track adoption", body: "Watch installs happen in real time. See download counts, geographic distribution, and version adoption at a glance." },
+            ].map((step, i) => (
+              <FadeSection key={step.n}>
+                <motion.div variants={fadeUp} custom={i}>
+                  <p className="text-[54px] font-normal text-[#E1E1E1] leading-none mb-4">{step.n}</p>
+                  <h3 className="text-[32px] font-normal text-black mb-3">{step.title}</h3>
+                  <p className="text-base text-[#666] leading-[1.6]">{step.body}</p>
+                </motion.div>
+              </FadeSection>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── CTA / Waitlist ───────────────────────────────────── */}
-      <section id="waitlist" className="px-6 py-28">
-        <motion.div
-          initial={{ opacity: 0, y: 32 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="mx-auto max-w-3xl rounded-2xl border p-14 text-center relative overflow-hidden"
-          style={{
-            background: "rgba(255,255,255,0.02)",
-            borderColor: "rgba(0,255,65,0.15)",
-            boxShadow: "0 0 80px rgba(0,255,65,0.05)",
-          }}
-        >
-          {/* Top glow line */}
-          <div
-            className="absolute inset-x-0 top-0 h-px"
-            style={{ background: "linear-gradient(90deg, transparent, rgba(0,255,65,0.5), transparent)" }}
-          />
-
-          <div
-            className="mb-3 text-xs font-semibold uppercase tracking-widest"
-            style={{ color: "rgba(0,255,65,0.6)", fontFamily: "'JetBrains Mono', monospace" }}
-          >
-            // join waitlist
+      {/* FEATURES */}
+      <section id="features" className="bg-white py-32">
+        <div className="max-w-6xl mx-auto px-6">
+          <FadeSection>
+            <p className="text-xs uppercase tracking-[0.15em] text-[#999] mb-4">Features</p>
+            <h2 className="text-[48px] font-normal text-black mb-16">Built for real distribution.</h2>
+          </FadeSection>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {features.map((f, i) => (
+              <FadeSection key={f.title}>
+                <motion.div
+                  variants={fadeUp}
+                  custom={i}
+                  className="border border-black/[0.08] rounded-md p-8 bg-[#F3F3F3]"
+                >
+                  <h3 className="text-xl font-normal text-black mb-2">{f.title}</h3>
+                  <p className="text-base text-[#666] leading-[1.6]">{f.description}</p>
+                </motion.div>
+              </FadeSection>
+            ))}
           </div>
-          <h2
-            className="text-4xl font-bold tracking-tight text-white"
-            style={{ fontFamily: "'Space Grotesk', sans-serif" }}
-          >
-            Ready to share your CLI tools?
-          </h2>
-          <p className="mx-auto mt-4 max-w-md text-base" style={{ color: "rgba(255,255,255,0.45)" }}>
-            We&apos;re putting the finishing touches on DeskPort. Join the waitlist and we&apos;ll notify you the moment it&apos;s live.
-          </p>
-          <div className="mx-auto mt-8 max-w-md">
-            <WaitlistForm />
-          </div>
-        </motion.div>
+        </div>
       </section>
 
-      {/* ── Footer ───────────────────────────────────────────── */}
-      <footer
-        className="border-t px-6 py-8"
-        style={{ borderColor: "rgba(255,255,255,0.06)" }}
-      >
-        <div className="mx-auto flex max-w-6xl items-center justify-between">
-          <div
-            className="flex items-center gap-2 text-sm"
-            style={{ color: "rgba(255,255,255,0.3)", fontFamily: "'JetBrains Mono', monospace" }}
-          >
-            <Terminal className="h-4 w-4" style={{ color: "#00FF41" }} />
-            DeskPort
-          </div>
-          <div className="text-xs" style={{ color: "rgba(255,255,255,0.2)", fontFamily: "'JetBrains Mono', monospace" }}>
-            &copy; {new Date().getFullYear()} DeskPort. All rights reserved.
-          </div>
+      {/* DARK SECTION */}
+      <section className="bg-black py-32">
+        <div className="max-w-6xl mx-auto px-6 text-center">
+          <FadeSection>
+            <h2 className="text-[48px] font-normal text-white leading-[1.1] mb-6 max-w-2xl mx-auto">
+              Your tools deserve better than a README.
+            </h2>
+            <p className="text-base text-[#999] mb-10 max-w-md mx-auto leading-[1.6]">
+              Stop pasting install instructions in Slack. Give your tools a proper home.
+            </p>
+            <a
+              href="#waitlist"
+              className="inline-block px-6 py-3 border border-white text-white text-sm rounded-full hover:bg-white hover:text-black transition-colors"
+            >
+              Join waitlist
+            </a>
+          </FadeSection>
+        </div>
+      </section>
+
+      {/* WAITLIST */}
+      <section id="waitlist" className="bg-[#F3F3F3] py-32">
+        <div className="max-w-6xl mx-auto px-6 text-center">
+          <FadeSection>
+            <p className="text-xs uppercase tracking-[0.15em] text-[#999] mb-4">Early access</p>
+            <h2 className="text-[48px] font-normal text-black mb-4">
+              Be first to ship.
+            </h2>
+            <p className="text-base text-[#666] mb-10 max-w-sm mx-auto leading-[1.6]">
+              We&apos;re onboarding teams in small batches. Leave your email and we&apos;ll reach out.
+            </p>
+            <WaitlistForm />
+          </FadeSection>
+        </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer className="bg-white border-t border-black/[0.06] py-10">
+        <div className="max-w-6xl mx-auto px-6 flex items-center justify-between text-xs text-[#999]">
+          <span>DeskPort</span>
+          <span>© {new Date().getFullYear()}</span>
         </div>
       </footer>
-    </div>
+    </main>
   );
 }
