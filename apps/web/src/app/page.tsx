@@ -5,9 +5,9 @@ import { motion, useInView } from "framer-motion";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://dkihbchyvopwnpkqrvda.supabase.co",
+  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://ubfjwnygghliyopwyeai.supabase.co",
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRraWhiY2h5dm9wd25wa3FydmRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMDUwMjgsImV4cCI6MjA4ODc4MTAyOH0.dbmWxA-ZZNC08HLuQ_Y4sl5vtJhGxtKeYxi_6QPYohY",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InViZmp3bnlnZ2hsaXlvcHd5ZWFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzMzc0NzcsImV4cCI6MjA5ODkxMzQ3N30.9xWwuJXxg5XqzFM3PRI2II8byhVrCFbR6zBlEKwt4oc",
 );
 
 const fadeUp = {
